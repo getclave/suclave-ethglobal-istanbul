@@ -112,18 +112,20 @@ contract SUClaveFactory is BaseFactory {
 
     function deploy(
         IPoolManager poolManager,
+        address suaveAddress,
         bytes32 salt
     ) public override returns (address) {
-        return address(new DynamicFeeHook{salt: salt}(poolManager));
+        return address(new SUClaveHook{salt: salt}(poolManager, suaveAddress));
     }
 
     function _hashBytecode(
-        IPoolManager poolManager
+        IPoolManager poolManager,
+        address suaveAddress
     ) internal pure override returns (bytes32 bytecodeHash) {
         bytecodeHash = keccak256(
             abi.encodePacked(
                 type(DynamicFeeHook).creationCode,
-                abi.encode(poolManager)
+                abi.encode(poolManager, suaveAddress)
             )
         );
     }
@@ -142,31 +144,36 @@ abstract contract BaseFactory {
 
     function deploy(
         IPoolManager poolManager,
+        address suaveAddress,
         bytes32 salt
     ) public virtual returns (address);
 
-    function mineDeploy(IPoolManager poolManager) external returns (address) {
-        return mineDeploy(poolManager, 0);
+    function mineDeploy(
+        IPoolManager poolManager,
+        address suaveAddress
+    ) external returns (address) {
+        return mineDeploy(poolManager, suaveAddress, 0);
     }
 
     function mineDeploy(
         IPoolManager poolManager,
+        address suaveAddress,
         uint256 startSalt
     ) public returns (address) {
-        bytes32 salt = mineSalt(poolManager, startSalt);
-        return deploy(poolManager, salt);
+        bytes32 salt = mineSalt(poolManager, suaveAddress, startSalt);
+        return deploy(poolManager, suaveAddress,  salt);
     }
 
     function mineSalt(
         IPoolManager poolManager,
+        address suaveAddress,
         uint256 startSalt
     ) public view returns (bytes32 salt) {
         uint256 endSalt = uint256(startSalt) + 1000;
         unchecked {
             for (uint256 i = startSalt; i < endSalt; ++i) {
                 salt = bytes32(i);
-                address hookAddress = _computeHookAddress(poolManager, salt);
-                // console.log("Testing salt %s for address %s", i, hookAddress);
+                address hookAddress = _computeHookAddress(poolManager, suaveAddress, salt);
 
                 if (_isPrefix(hookAddress)) {
                     console.log("Found salt %s for address %s", i, hookAddress);
@@ -179,6 +186,7 @@ abstract contract BaseFactory {
 
     function _computeHookAddress(
         IPoolManager poolManager,
+        address suaveAddress,
         bytes32 salt
     ) internal view returns (address) {
         bytes32 hash = keccak256(
@@ -186,7 +194,7 @@ abstract contract BaseFactory {
                 bytes1(0xff),
                 address(this),
                 salt,
-                _hashBytecode(poolManager)
+                _hashBytecode(poolManager, suaveAddress)
             )
         );
         return address(uint160(uint256(hash)));
@@ -196,7 +204,8 @@ abstract contract BaseFactory {
     /// For example, the CounterHook contract would return:
     /// bytecodeHash = keccak256(abi.encodePacked(type(CounterHook).creationCode, abi.encode(poolManager)));
     function _hashBytecode(
-        IPoolManager poolManager
+        IPoolManager poolManager,
+        address suaveAddress
     ) internal pure virtual returns (bytes32 bytecodeHash);
 
     function _isPrefix(address _address) internal view returns (bool) {
