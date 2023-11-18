@@ -1,0 +1,3 @@
+[submodule "suave-geth-ethglobal-istanbul"]
+	path = suave-geth-ethglobal-istanbul
+	url = https://github.com/getclave/suave-geth-ethglobal-istanbul
